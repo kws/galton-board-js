@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as CANNON from 'cannon-es';
 import { createBuckets } from './buckets.js';
-import { Ball, wakeUpStats } from './balls.js';
+import { Ball } from './balls.js';
 import { createPegGrid } from './pegs.js';
 
 // Physics constants
@@ -144,17 +144,6 @@ function animate() {
 
   // Log sleep statistics periodically (every 3 seconds)
   const currentTime = performance.now();
-  if (currentTime - lastSleepLog > 3000) {
-    const awakeCount = balls.filter(ball => ball.body.sleepState === CANNON.Body.AWAKE).length;
-    const sleepyCount = balls.filter(ball => ball.body.sleepState === CANNON.Body.SLEEPY).length;
-    const sleepingCount = balls.filter(ball => ball.body.sleepState === CANNON.Body.SLEEPING).length;
-    
-    console.log(`Sleep Stats - Total: ${balls.length}`);
-    console.log(`  States: Awake: ${awakeCount}, Sleepy: ${sleepyCount}, Sleeping: ${sleepingCount}`);
-    console.log(`  Smart Wake-ups: Allowed: ${wakeUpStats.smartWakeUpCount}, Prevented: ${wakeUpStats.preventedWakeUpCount}`);
-    
-    lastSleepLog = currentTime;
-  }
 
   // Remove balls that fall too low (optional cleanup)
   for (let i = balls.length - 1; i >= 0; i--) {

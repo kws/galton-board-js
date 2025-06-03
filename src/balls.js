@@ -2,17 +2,6 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
 let ballIdCounter = 0;
-
-// Global counters for smart wake-up statistics
-export const wakeUpStats = {
-  smartWakeUpCount: 0,
-  preventedWakeUpCount: 0,
-  reset() {
-    this.smartWakeUpCount = 0;
-    this.preventedWakeUpCount = 0;
-  }
-};
-
 export class Ball {
   constructor(scene, world, x = 0, y = 2, z = 0, radius = 0.2) {
     this.id = ballIdCounter++;
@@ -26,6 +15,13 @@ export class Ball {
     // Position tracking for displacement measurement
     this.positionHistory = [];
     this.lastDisplacementCheck = performance.now();
+    
+    // Collision-based movement tracking
+    this.lastCollisionPosition = null; // Store only the last collision position
+    this.smallMovementCounter = 0; // Count consecutive small movements
+    this.smallMovementThreshold = 0.5; // Displacement threshold for "small movement"
+    this.maxSmallMovements = 500; // If we see this many small movements in a row, mark as static
+    this.isStatic = false; // Flag to mark ball as static
     
     this.createPhysicsBody(x, y, z);
     this.createVisualMesh();
@@ -60,74 +56,43 @@ export class Ball {
   }
   
   handleSmartWakeUp(event) {
-    const { target, body, contact } = event;
-    const otherBall = body.userData?.ball;
+    // Record current position on collision
+    this.recordCollisionPosition();
     
-    // Only apply smart wake-up logic to ball-to-ball collisions
-    if (!otherBall) return;
+    // Check if ball should be marked as static
+    this.checkForStaticState();
+
+  }
+  
+  recordCollisionPosition() {
+    const currentPosition = this.body.position.clone();
     
-    // Get actual displacement and speed rather than just instantaneous velocity
-    const otherBallSpeed = otherBall.body.velocity.length();
-    const otherBallDisplacement = otherBall.getDisplacementInLastSecond();
-    const otherBallAvgSpeed = otherBall.getAverageSpeed();
+    // If this is the first collision, just store the position
+    if (this.lastCollisionPosition === null) {
+      this.lastCollisionPosition = currentPosition;
+      return;
+    }
     
-    const thisSpeed = this.body.velocity.length();
-    const thisDisplacement = this.getDisplacementInLastSecond();
+    // Calculate displacement from last collision
+    const displacement = currentPosition.distanceTo(this.lastCollisionPosition);
     
-    // More sophisticated wake-up logic based on actual movement:
-    // 1. High displacement = truly moving ball
-    // 2. Low displacement but high velocity = jiggling ball
-    const SIGNIFICANT_DISPLACEMENT = 0.5; // Ball must have moved this far in the last second
-    const MINIMUM_AVG_SPEED = 1.0; // Average speed over the last second
-    
-    const ballAge = performance.now() - this.spawnTime;
-    const otherBallAge = performance.now() - otherBall.spawnTime;
-    const bothBallsOld = ballAge > 2000 && otherBallAge > 2000;
-    
-    // Ball is truly moving if it has significant displacement OR good average speed
-    const otherBallTrulyMoving = otherBallDisplacement > SIGNIFICANT_DISPLACEMENT || 
-                                otherBallAvgSpeed > MINIMUM_AVG_SPEED;
-    
-    // Allow wake-up if the other ball is truly moving, or if either ball is young
-    const shouldWakeUp = otherBallTrulyMoving || !bothBallsOld;
-    
-    if (shouldWakeUp) {
-      // Allow wake up
-      if (this.body.sleepState !== CANNON.Body.AWAKE) {
-        this.body.wakeUp();
-        this.lastWakeTime = performance.now();
-        wakeUpStats.smartWakeUpCount++;
-        console.log(`Ball ${this.id} woken by ball ${otherBall.id} (disp: ${otherBallDisplacement.toFixed(2)}, avgSpeed: ${otherBallAvgSpeed.toFixed(2)})`);
-      }
+    // If displacement is small, increment counter; otherwise reset it
+    if (displacement < this.smallMovementThreshold) {
+      this.smallMovementCounter++;
     } else {
-      // Prevent wake-up for jiggling balls
-      wakeUpStats.preventedWakeUpCount++;
-      
-      // Gently encourage sleep for balls that aren't really moving
-      if (ballAge > 3000 && thisDisplacement < 0.1) {
-        this.forceSleep();
-      }
-      if (otherBallAge > 3000 && otherBallDisplacement < 0.1) {
-        otherBall.forceSleep();
-      }
-      
-      console.log(`Prevented jiggle wake-up: Ball ${this.id} hit by jiggling ball ${otherBall.id} (disp: ${otherBallDisplacement.toFixed(2)})`);
+      this.smallMovementCounter = 0;
+      this.lastCollisionPosition = currentPosition;
     }
   }
   
-  forceSleep() {
-    // Immediately put the ball to sleep if it's moving slowly
-    if (this.body.velocity.length() < 1.0) {
-      this.body.sleep();
-    } else {
-      // If still moving, schedule a sleep check very soon
-      setTimeout(() => {
-        if (this.body.velocity.length() < 0.5) {
-          this.body.sleep();
-        }
-      }, 5);
+  checkForStaticState() {
+    // If we've seen enough consecutive small movements, mark as static
+    if (this.smallMovementCounter >= this.maxSmallMovements) {
+      this.body.type = CANNON.Body.STATIC;
+      this.isStatic = true;
     }
   }
+  
   
   createVisualMesh() {
     this.mesh = new THREE.Mesh(
@@ -173,21 +138,14 @@ export class Ball {
     return newest.position.distanceTo(oldest.position);
   }
   
-  getAverageSpeed() {
-    if (this.positionHistory.length < 2) return 0;
-    
-    let totalDistance = 0;
-    for (let i = 1; i < this.positionHistory.length; i++) {
-      const dist = this.positionHistory[i].position.distanceTo(this.positionHistory[i-1].position);
-      totalDistance += dist;
-    }
-    
-    const timeSpan = (this.positionHistory[this.positionHistory.length - 1].time - this.positionHistory[0].time) / 1000; // Convert to seconds
-    return timeSpan > 0 ? totalDistance / timeSpan : 0;
-  }
-  
   updateSleepColor() {
     const material = this.mesh.material;
+    
+    // Show static balls in a distinct color
+    if (this.body.type === CANNON.Body.STATIC) {
+      material.color.setHex(0x444444); // Dark gray - static/jiggling
+      return;
+    }
     
     switch (this.body.sleepState) {
       case CANNON.Body.AWAKE:
