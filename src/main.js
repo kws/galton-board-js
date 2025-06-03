@@ -4,16 +4,7 @@ import * as CANNON from 'cannon-es';
 import { createBuckets } from './buckets.js';
 import { Ball } from './balls.js';
 import { createPegGrid } from './pegs.js';
-
-// Physics constants
-const GRAVITY = 19.64; // Doubled gravity for faster animation (was 9.82)
-const ANIMATION_SPEED = 20.0; // Increase this value to speed up the animation
-
-// Layout constants
-const PEG_SPACING_X = 1.2
-const PEG_SPACING_Y = 2
-const PEG_RADIUS = 0.25
-const PEG_ROWS = 6;
+import { PEG_SPACING_X, PEG_SPACING_Y, PEG_RADIUS, PEG_ROWS, GRAVITY, ANIMATION_SPEED } from './constants.js';
 
 
 // Scene setup
@@ -60,43 +51,8 @@ const balls = []; // Array to store all ball objects
 
 const spawnBall = () => {
   const ball = Ball.createRandomBall(scene, world, ballRadius);
-
-  // Add collision event listener to the ball
-  ball.addCollisionListener((event) => {
-    const { target, body } = event;
-    
-    // Check if the collision is with one of the big balls (pegs)
-    if (pegBodies.includes(body)) {
-      const peg = body.userData.peg;
-
-      // Max height to aim for - random between 0.25x and 2x peg spacings
-      const yMax = PEG_SPACING_Y + 0.25 + (0.75 * Math.random() * PEG_SPACING_Y);
-      
-      // Upwards velocity required to reach max height
-      const vy = Math.sqrt(2 * GRAVITY * (yMax - PEG_SPACING_Y));
-      
-      // Time to reach max height and fall back to ground
-      const tUp = vy / GRAVITY;
-      const tDown = Math.sqrt(2 * yMax / GRAVITY);
-      const tTotal = tUp + tDown;
-
-      // Horizontal velocity required to reach target
-      const vx = PEG_SPACING_X / tTotal;
-
-      const direction = Math.random() < 0.5 ? -1 : 1;
-
-      ball.setVelocity(vx * direction, vy, 0);
-
-      // If this collision is with a row 1 peg, spawn a new ball
-      if (peg.row === 1) {
-        spawnBall();
-      }
-    }
-  });
-
-  // Store the ball object
+  ball.setupPegCollisionHandler(spawnBall);
   balls.push(ball);
-  
   return ball;
 };
 
@@ -119,7 +75,6 @@ scene.add(light2);
 
 // Animate
 const clock = new THREE.Clock();
-let lastSleepLog = 0;
 
 function animate() {
   requestAnimationFrame(animate);
@@ -132,12 +87,10 @@ function animate() {
     ball.update();
     
     // Displacement-based sleep enforcement - only for balls that truly aren't moving
-    const ballAge = performance.now() - ball.spawnTime;
-    if (ballAge > 3000 && ball.body.sleepState === CANNON.Body.AWAKE) { // 3 seconds old
+    if (ball.inBucket != null && ball.body.sleepState === CANNON.Body.AWAKE) {
       const displacement = ball.getDisplacementInLastSecond();
       if (displacement < 0.05) { // Ball hasn't moved much in the last second
         ball.body.sleep();
-        console.log(`Ball ${ball.id} forced to sleep - minimal displacement: ${displacement.toFixed(3)}`);
       }
     }
   });
@@ -151,6 +104,10 @@ function animate() {
       balls[i].destroy();
       balls.splice(i, 1);
       console.log('Ball removed for falling too low');
+    }
+    if (balls[i].body.type === CANNON.Body.STATIC) {
+      balls.splice(i, 1);
+      console.log('Ball removed for being static');
     }
   }
 

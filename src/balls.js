@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { PEG_SPACING_X, PEG_SPACING_Y, GRAVITY } from './constants.js';
+
+const DEBUG_STATIC = false;
 
 let ballIdCounter = 0;
 export class Ball {
@@ -21,7 +24,6 @@ export class Ball {
     this.smallMovementCounter = 0; // Count consecutive small movements
     this.smallMovementThreshold = 0.5; // Displacement threshold for "small movement"
     this.maxSmallMovements = 500; // If we see this many small movements in a row, mark as static
-    this.isStatic = false; // Flag to mark ball as static
     
     this.createPhysicsBody(x, y, z);
     this.createVisualMesh();
@@ -34,8 +36,6 @@ export class Ball {
       shape: new CANNON.Sphere(this.radius),
       position: new CANNON.Vec3(x, y, z),
       allowSleep: true,
-      sleepSpeedLimit: 0.05, // Lower threshold for considering ball sleepy (default: 0.1)
-      sleepTimeLimit: 0.5,   // Time in seconds before sleepy ball goes to sleep (default: 1)
     });
 
     // Disable damping to prevent air resistance from affecting trajectory
@@ -47,6 +47,40 @@ export class Ball {
 
     this.world.addBody(this.body);
   }
+
+  setupPegCollisionHandler(ballFactory) {
+    this.addCollisionListener((event) => {
+      const { target, body } = event;
+      
+      // Check if the collision is with one of the big balls (pegs)
+      if (body?.userData?.peg !== undefined) {
+        const peg = body.userData.peg;
+
+        // Max height to aim for - random between 0.25x and 2x peg spacings
+        const yMax = PEG_SPACING_Y + 0.25 + (0.75 * Math.random() * PEG_SPACING_Y);
+        
+        // Upwards velocity required to reach max height
+        const vy = Math.sqrt(2 * GRAVITY * (yMax - PEG_SPACING_Y));
+        
+        // Time to reach max height and fall back to ground
+        const tUp = vy / GRAVITY;
+        const tDown = Math.sqrt(2 * yMax / GRAVITY);
+        const tTotal = tUp + tDown;
+
+        // Horizontal velocity required to reach target
+        const vx = PEG_SPACING_X / tTotal;
+
+        const direction = Math.random() < 0.5 ? -1 : 1;
+
+        this.setVelocity(vx * direction, vy, 0);
+
+        // If this collision is with a row 1 peg, spawn a new ball
+        if (peg.row === 1) {
+          ballFactory();
+        }
+      }
+    });
+  };
   
   setupSmartWakeUp() {
     // Override the default collision behavior to implement smart wake-up
@@ -111,7 +145,9 @@ export class Ball {
     this.updatePositionHistory();
     
     // Update color based on sleep state
-    this.updateSleepColor();
+    if (DEBUG_STATIC) {
+      this.updateSleepColor();
+    }
   }
   
   updatePositionHistory() {

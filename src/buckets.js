@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
+const DEBUG_LID = false;
+
 export class Bucket {
   constructor(scene, world, x, y, width, height, depth, index) {
     this.scene = scene;
@@ -89,12 +91,27 @@ export class Bucket {
   }
   
   createSensorLid() {
+    const lidHeight = 1.5;
+
+    // Create a shape so we can visualise the lid
+    if (DEBUG_LID) {
+        const lidMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(this.width, lidHeight, this.depth),
+            new THREE.MeshStandardMaterial({ color: 0x8B4513 })
+        );
+        lidMesh.position.set(this.x, this.y + this.height/2 + lidHeight/2, 0);
+        this.scene.add(lidMesh);
+        this.meshes.push(lidMesh);
+    }
+
     // Create invisible sensor lid at the top of the bucket
-    const lidShape = new CANNON.Box(new CANNON.Vec3(this.width/2, 0.1, this.depth/2));
+    const lidShape = new CANNON.Box(new CANNON.Vec3(this.width/2, lidHeight, this.depth/2));
     const lidBody = new CANNON.Body({ 
       mass: 0,
       isTrigger: true // Make this a sensor - detects collisions but doesn't apply physical response
     });
+
+
     lidBody.addShape(lidShape);
     lidBody.position.set(this.x, this.y + this.height/2, 0);
     this.world.addBody(lidBody);
