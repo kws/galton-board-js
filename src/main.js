@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as CANNON from 'cannon-es';
 
+// Physics constants
+const GRAVITY = 9.82;
+
 // Scene setup
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
@@ -18,7 +21,7 @@ controls.enableZoom = true;
 
 // Physics
 const world = new CANNON.World({
-  gravity: new CANNON.Vec3(0, -9.82, 0),
+  gravity: new CANNON.Vec3(0, -GRAVITY, 0),
 });
 
 const material = new CANNON.Material();
@@ -40,6 +43,7 @@ const createPeg = (x,y) => {
     mass: 0,
     shape: new CANNON.Sphere(PEG_RADIUS),
     position: new CANNON.Vec3(x, y, 0),
+    isTrigger: true, // Make this a sensor - detects collisions but doesn't apply physical response
   });
   world.addBody(groundBody);
   
@@ -79,56 +83,28 @@ ballBody.addEventListener('collide', (event) => {
   
   // Check if the collision is with one of the big balls
   if (bigBallBodies.includes(body)) {
-    // Store collision position for debugging
-    const collisionX = ballBody.position.x;
-    const collisionY = ballBody.position.y;
     
-    // Physics parameters
-    const gravity = 9.82;
-    const initialUpwardVelocity = 4.0; // Fixed initial velocity for consistent bouncing
+    // Max height to aim for - random between 0.25x and 2x peg spacings
+    const yMax = PEG_SPACING_Y + 0.25 + (0.75 * Math.random() * PEG_SPACING_Y);
     
-    // Use kinematic equation to find time when ball reaches target level:
-    // y = v0*t - (1/2)*g*t^2
-    // We want to solve for when y = -PEG_SPACING_Y (below current position)
-    // Rearranging: (1/2)*g*t^2 - v0*t - PEG_SPACING_Y = 0
-    // Using quadratic formula: t = (v0 + sqrt(v0^2 + 2*g*PEG_SPACING_Y)) / g
+    // Upwards velocity required to reach max height
+    const vy = Math.sqrt(2 * GRAVITY * (yMax - PEG_SPACING_Y));
     
-    const discriminant = initialUpwardVelocity * initialUpwardVelocity + 2 * gravity * PEG_SPACING_Y;
-    const timeToTarget = (initialUpwardVelocity + Math.sqrt(discriminant)) / gravity;
-    
-    // Calculate horizontal velocity to move exactly PEG_SPACING_X in that time
-    const horizontalSpeed = PEG_SPACING_X / timeToTarget;
-    
-    // Randomly choose left or right direction
+    // Time to reach max height and fall back to ground
+    const tUp = vy / GRAVITY;
+    const tDown = Math.sqrt(2 * yMax / GRAVITY);
+    const tTotal = tUp + tDown;
+
+    // Horizontal velocity required to reach target
+    const vx = PEG_SPACING_X / tTotal;
+
+    console.log(`vx: ${vx}, vy: ${vy}, tTotal: ${tTotal}`);
+
     const direction = Math.random() < 0.5 ? -1 : 1;
-    
-    // Set the velocities
-    ballBody.velocity.x = direction * horizontalSpeed;
-    ballBody.velocity.y = initialUpwardVelocity;
-    ballBody.velocity.z = 0;
-    
-    // Debug output
-    console.log(`=== PEG COLLISION ===`);
-    console.log(`Collision at: (${collisionX.toFixed(2)}, ${collisionY.toFixed(2)})`);
-    // console.log(`Direction: ${direction > 0 ? 'RIGHT' : 'LEFT'}`);
-    // console.log(`Target distance: ${PEG_SPACING_X}`);
-    // console.log(`Target position: (${(collisionX + direction * PEG_SPACING_X).toFixed(2)}, ${(collisionY - PEG_SPACING_Y).toFixed(2)})`);
-    // console.log(`Initial upward velocity: ${initialUpwardVelocity}`);
-    // console.log(`Time to target: ${timeToTarget.toFixed(2)}s`);
-    // console.log(`Horizontal speed: ${horizontalSpeed.toFixed(2)}`);
-    // console.log(`Expected max height: ${(initialUpwardVelocity * initialUpwardVelocity / (2 * gravity)).toFixed(2)}`);
-    
-    // Set up a timeout to check where the ball actually lands
-    setTimeout(() => {
-      const actualX = ballBody.position.x;
-      const actualY = ballBody.position.y;
-      const actualDistance = Math.abs(actualX - collisionX);
-      // console.log(`=== ACTUAL LANDING ===`);
-      // console.log(`Landed at: (${actualX.toFixed(2)}, ${actualY.toFixed(2)})`);
-      // console.log(`Actual distance traveled: ${actualDistance.toFixed(2)}`);
-      // console.log(`Distance error: ${(actualDistance - PEG_SPACING_X).toFixed(2)}`);
-      // console.log(`Center-to-center distance to target peg: ${Math.abs(actualX - (collisionX + direction * PEG_SPACING_X)).toFixed(2)}`);
-    }, timeToTarget * 1000 + 100); // Wait for calculated time plus small buffer
+
+    ballBody.velocity.set(vx * direction, vy, 0);
+
+
   }
 });
 
