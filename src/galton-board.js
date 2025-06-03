@@ -11,12 +11,64 @@ export class GaltonBoard extends LitElement {
   static properties = {
     width: { type: Number },
     height: { type: Number },
-    pegRows: { type: Number },
+    pegRows: { 
+      type: Number,
+      attribute: 'peg-rows',
+      converter: {
+        fromAttribute: (value) => {
+          console.log(`Converting pegRows from attribute: "${value}" (type: ${typeof value})`);
+          const numValue = Number(value);
+          return isNaN(numValue) ? 12 : numValue;
+        }
+      }
+    },
     ballRadius: { type: Number },
-    autoSpawn: { type: Boolean },
+    autoSpawn: { 
+      type: Boolean,
+      attribute: 'auto-spawn',
+      converter: {
+        fromAttribute: (value) => {
+          console.log(`Converting autoSpawn from attribute: "${value}" (type: ${typeof value})`);
+          if (value === null) return true; // Default when attribute not present
+          if (value === 'false' || value === false) return false;
+          return Boolean(value);
+        }
+      }
+    },
     gravity: { type: Number },
     animationSpeed: { type: Number }
   };
+
+  // Ensure pegRows is always a number
+  set pegRows(value) {
+    const numValue = Number(value);
+    const newValue = isNaN(numValue) ? 12 : numValue;
+    if (this._pegRows !== newValue) {
+      this._pegRows = newValue;
+      this.boardHeight = this._pegRows * PEG_SPACING_Y;
+      this.requestUpdate('pegRows', undefined);
+    }
+  }
+
+  get pegRows() {
+    return this._pegRows;
+  }
+
+  // Ensure autoSpawn is always a boolean
+  set autoSpawn(value) {
+    // Convert string "false" to boolean false, everything else follows normal JS truthy/falsy rules
+    const boolValue = value === "false" ? false : Boolean(value);
+    console.log(`Setting autoSpawn: "${value}" (type: ${typeof value}) -> ${boolValue}`);
+    if (this._autoSpawn !== boolValue) {
+      this._autoSpawn = boolValue;
+      this.requestUpdate('autoSpawn', undefined);
+    }
+  }
+
+  get autoSpawn() {
+    console.log(`Getting autoSpawn: ${this._autoSpawn}`);
+    return this._autoSpawn;
+  }
 
   static styles = css`
     :host {
@@ -41,12 +93,13 @@ export class GaltonBoard extends LitElement {
 
   constructor() {
     super();
+
     // Set default property values
     this.width = 800;
     this.height = 600;
-    this.pegRows = 12;
+    this._pegRows = 12; // Use private property for internal storage
     this.ballRadius = 0.2;
-    this.autoSpawn = true;
+    this._autoSpawn = true; // Use private property for internal storage
     this.gravity = GRAVITY;
     this.animationSpeed = ANIMATION_SPEED;
     this.boardHeight = this.pegRows * PEG_SPACING_Y;
@@ -67,6 +120,7 @@ export class GaltonBoard extends LitElement {
   }
 
   firstUpdated() {
+    console.log(`firstUpdated called. autoSpawn: ${this.autoSpawn}`);
     this.initializeSimulation();
   }
 
@@ -77,6 +131,8 @@ export class GaltonBoard extends LitElement {
 
   initializeSimulation() {
     if (this.isInitialized) return;
+
+    console.log(`Initializing simulation. Pegs: ${this.pegRows}`);
 
     const container = this.shadowRoot.querySelector('#canvas-container');
     if (!container) return;
@@ -115,16 +171,18 @@ export class GaltonBoard extends LitElement {
     });
 
     // Create pegs
-    this.pegs = createPegGrid(this.scene, this.world, this.pegRows, PEG_SPACING_X, PEG_SPACING_Y, PEG_RADIUS);
+    this.pegs = createPegGrid(this.scene, this.world, Number(this.pegRows), PEG_SPACING_X, PEG_SPACING_Y, PEG_RADIUS);
 
     // Create buckets
-    this.buckets = createBuckets(this.scene, this.world, this.pegRows, PEG_SPACING_X, PEG_SPACING_Y);
+    this.buckets = createBuckets(this.scene, this.world, Number(this.pegRows), PEG_SPACING_X, PEG_SPACING_Y);
+    console.log(`Created ${this.pegs.length} pegs and ${this.buckets.length} buckets`);
 
 
     // Setup lighting
     this.setupLighting();
 
     // Start with first ball if autoSpawn is enabled
+    console.log(`AutoSpawn during init: ${this.autoSpawn}`);
     if (this.autoSpawn) {
       this.spawnBall();
     }
@@ -159,9 +217,14 @@ export class GaltonBoard extends LitElement {
     
     const ball = Ball.createRandomBall(this.scene, this.world, this.ballRadius);
     
-    if (this.autoSpawn) {
-      ball.setupPegCollisionHandler(() => this.spawnBall());
-    }
+    // Always set up collision handler, but make it conditional on autoSpawn
+    ball.setupPegCollisionHandler(() => {
+      // Check autoSpawn at the time of collision, not when the ball was created
+      if (this.autoSpawn) {
+        this.spawnBall();
+      }
+    });
+    ball.hasCollisionHandler = true;
     
     this.balls.push(ball);
     
@@ -309,6 +372,7 @@ export class GaltonBoard extends LitElement {
       changedProperties.has('gravity') ||
       changedProperties.has('animationSpeed')
     )) {
+      console.log('Updating simulation. Pegs: ', this.pegRows);
       this.cleanup();
       this.initializeSimulation();
     }
@@ -316,6 +380,18 @@ export class GaltonBoard extends LitElement {
     // Update gravity if it changed
     if (this.world && changedProperties.has('gravity')) {
       this.world.gravity.set(0, -this.gravity, 0);
+    }
+
+    // Handle autoSpawn changes
+    if (this.isInitialized && changedProperties.has('autoSpawn')) {
+      console.log(`AutoSpawn changed to: ${this.autoSpawn}`);
+      
+      if (this.autoSpawn && this.balls.length === 0) {
+        // If autoSpawn is now enabled and no balls exist, spawn the first ball
+        this.spawnBall();
+      }
+      // Note: All balls have conditional collision handlers that check autoSpawn at collision time
+      // so existing balls will automatically respect the new autoSpawn setting
     }
   }
 }

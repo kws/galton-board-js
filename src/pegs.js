@@ -69,7 +69,5 @@ export function createPegGrid(scene, world, pegRows, pegSpacingX, pegSpacingY, p
     }
   }
   
-  console.log(`Created ${pegs.length} pegs in ${pegRows} rows`);
-  
   return pegs;
 } 
