@@ -185,7 +185,6 @@ export class Bucket {
       if (ball.inBucket == null) {
         ball.inBucket = this;
         this.count++;
-        console.log(`Bucket ${this.index}: Ball ${ball.id} entered! Count: ${this.count}`);
 
         // Give the ball a small random z offset to introduce variability
         const zOffset = 0.1 * Math.random() - 0.05;
@@ -235,6 +234,5 @@ export function createBuckets(scene, world, pegRows, pegSpacingX, pegSpacingY) {
     buckets.push(bucket);
   }
 
-  console.log(`Created ${numBuckets} buckets`);
   return buckets;
 }

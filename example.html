@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galton Board Component Examples</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .example {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .example h2 {
+            color: #555;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+        
+        .board-container {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background: #f0f0f0;
+        }
+        
+        button:active {
+            background: #e0e0e0;
+        }
+        
+        .stats {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Galton Board LIT Component Examples</h1>
+        
+        <div class="example">
+            <h2>Example 1: Default Configuration</h2>
+            <p>A standard Galton board with auto-spawning enabled and 12 rows of pegs.</p>
+            
+            <div class="board-container">
+                <galton-board id="board1" style="width: 100%; height: 400px;"></galton-board>
+            </div>
+            
+            <div class="controls">
+                <button onclick="board1.addBall()">Add Ball</button>
+                <button onclick="board1.reset()">Reset</button>
+                <button onclick="toggleAutoSpawn('board1')">Toggle Auto-spawn</button>
+            </div>
+            
+            <div class="stats" id="stats1">
+                Balls: 0 | Bucket Distribution: []
+            </div>
+        </div>
+        
+        <div class="example">
+            <h2>Example 2: Custom Configuration</h2>
+            <p>A smaller board with fewer pegs, custom gravity, and no auto-spawning.</p>
+            
+            <div class="board-container">
+                <galton-board 
+                    id="board2" 
+                    peg-rows="8" 
+                    auto-spawn="false" 
+                    gravity="15"
+                    style="width: 100%; height: 350px;">
+                </galton-board>
+            </div>
+            
+            <div class="controls">
+                <button onclick="board2.addBall()">Add Ball</button>
+                <button onclick="board2.reset()">Reset</button>
+                <button onclick="changeGravity('board2')">Change Gravity</button>
+            </div>
+            
+            <div class="stats" id="stats2">
+                Balls: 0 | Bucket Distribution: []
+            </div>
+        </div>
+        
+        <div class="grid">
+            <div class="example">
+                <h2>Example 3: Compact View</h2>
+                <p>Smaller board for embedding in other layouts.</p>
+                
+                <div class="board-container">
+                    <galton-board 
+                        id="board3" 
+                        peg-rows="6" 
+                        auto-spawn="false"
+                        style="width: 100%; height: 250px;">
+                    </galton-board>
+                </div>
+                
+                <div class="controls">
+                    <button onclick="board3.addBall()">Add Ball</button>
+                    <button onclick="board3.reset()">Reset</button>
+                </div>
+                
+                <div class="stats" id="stats3">
+                    Balls: 0
+                </div>
+            </div>
+            
+            <div class="example">
+                <h2>Example 4: Side by Side</h2>
+                <p>Another compact board to show multiple instances.</p>
+                
+                <div class="board-container">
+                    <galton-board 
+                        id="board4" 
+                        peg-rows="6" 
+                        auto-spawn="false" 
+                        animation-speed="2"
+                        style="width: 100%; height: 250px;">
+                    </galton-board>
+                </div>
+                
+                <div class="controls">
+                    <button onclick="board4.addBall()">Add Ball</button>
+                    <button onclick="board4.reset()">Reset</button>
+                </div>
+                
+                <div class="stats" id="stats4">
+                    Balls: 0
+                </div>
+            </div>
+        </div>
+        
+        <div class="example">
+            <h2>API Usage Examples</h2>
+            <p>Demonstrating programmatic control of the components.</p>
+            
+            <div class="controls">
+                <button onclick="addBallsToAll()">Add Ball to All Boards</button>
+                <button onclick="resetAll()">Reset All Boards</button>
+                <button onclick="showStats()">Log All Stats</button>
+                <button onclick="raceBalls()">Ball Race (10 balls each)</button>
+            </div>
+            
+            <div class="stats" id="api-stats">
+                Click "Log All Stats" to see current statistics
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import './src/galton-board.js';
+        
+        // Get all board instances
+        const boards = ['board1', 'board2', 'board3', 'board4'].map(id => 
+            document.getElementById(id)
+        );
+        
+        // Update statistics for all boards
+        function updateStats() {
+            boards.forEach((board, index) => {
+                const statsElement = document.getElementById(`stats${index + 1}`);
+                if (statsElement && board) {
+                    const ballCount = board.getBallCount();
+                    const bucketCounts = board.getBucketCounts();
+                    
+                    if (index < 2) { // Show full stats for first two boards
+                        statsElement.textContent = 
+                            `Balls: ${ballCount} | Bucket Distribution: [${bucketCounts.join(', ')}]`;
+                    } else { // Simplified stats for compact boards
+                        statsElement.textContent = `Balls: ${ballCount}`;
+                    }
+                }
+            });
+        }
+        
+        // Update stats every second
+        setInterval(updateStats, 1000);
+        
+        // Global functions for button handlers
+        window.toggleAutoSpawn = (boardId) => {
+            const board = document.getElementById(boardId);
+            board.autoSpawn = !board.autoSpawn;
+            console.log(`${boardId} auto-spawn: ${board.autoSpawn}`);
+        };
+        
+        window.changeGravity = (boardId) => {
+            const board = document.getElementById(boardId);
+            board.gravity = board.gravity === 15 ? 25 : 15;
+            console.log(`${boardId} gravity changed to: ${board.gravity}`);
+        };
+        
+        window.addBallsToAll = () => {
+            boards.forEach(board => board.addBall());
+        };
+        
+        window.resetAll = () => {
+            boards.forEach(board => board.reset());
+        };
+        
+        window.showStats = () => {
+            const stats = {};
+            boards.forEach((board, index) => {
+                stats[`board${index + 1}`] = {
+                    balls: board.getBallCount(),
+                    buckets: board.getBucketCounts()
+                };
+            });
+            console.log('Current Statistics:', stats);
+            document.getElementById('api-stats').textContent = 
+                JSON.stringify(stats, null, 2);
+        };
+        
+        window.raceBalls = () => {
+            boards.forEach(board => {
+                board.reset();
+                for (let i = 0; i < 10; i++) {
+                    setTimeout(() => board.addBall(), i * 200);
+                }
+            });
+        };
+        
+        // Log when balls are spawned
+        boards.forEach((board, index) => {
+            board.addEventListener('ball-spawned', (e) => {
+                console.log(`Board ${index + 1} - Ball spawned! Total: ${e.detail.totalBalls}`);
+            });
+            
+            board.addEventListener('reset', () => {
+                console.log(`Board ${index + 1} - Reset`);
+            });
+        });
+    </script>
+</body>
+</html> 
