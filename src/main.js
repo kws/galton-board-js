@@ -79,38 +79,56 @@ ballBody.addEventListener('collide', (event) => {
   
   // Check if the collision is with one of the big balls
   if (bigBallBodies.includes(body)) {
-    // Fixed bounce parameters
-    const bounceHeight = 1.2; // How high to bounce
+    // Store collision position for debugging
+    const collisionX = ballBody.position.x;
+    const collisionY = ballBody.position.y;
+    
+    // Physics parameters
     const gravity = 9.82;
-    const initialUpwardVelocity = Math.sqrt(2 * gravity * bounceHeight);
+    const initialUpwardVelocity = 4.0; // Fixed initial velocity for consistent bouncing
     
-    // Calculate total vertical distance: bounce up then fall down by PEG_SPACING_Y
-    const totalVerticalDistance = bounceHeight + PEG_SPACING_Y;
+    // Use kinematic equation to find time when ball reaches target level:
+    // y = v0*t - (1/2)*g*t^2
+    // We want to solve for when y = -PEG_SPACING_Y (below current position)
+    // Rearranging: (1/2)*g*t^2 - v0*t - PEG_SPACING_Y = 0
+    // Using quadratic formula: t = (v0 + sqrt(v0^2 + 2*g*PEG_SPACING_Y)) / g
     
-    // Calculate time for complete trajectory:
-    // Time to reach peak + time to fall total distance
-    const timeToTarget = (initialUpwardVelocity + Math.sqrt(initialUpwardVelocity * initialUpwardVelocity + 2 * gravity * totalVerticalDistance)) / gravity;
+    const discriminant = initialUpwardVelocity * initialUpwardVelocity + 2 * gravity * PEG_SPACING_Y;
+    const timeToTarget = (initialUpwardVelocity + Math.sqrt(discriminant)) / gravity;
     
     // Calculate horizontal velocity to move exactly PEG_SPACING_X in that time
     const horizontalSpeed = PEG_SPACING_X / timeToTarget;
-    
-    // Add compensation factor to account for physics inaccuracies/energy loss
-    const compensationFactor = 1.66; // Increase by 10% to compensate
-    const adjustedHorizontalSpeed = horizontalSpeed * compensationFactor;
     
     // Randomly choose left or right direction
     const direction = Math.random() < 0.5 ? -1 : 1;
     
     // Set the velocities
-    ballBody.velocity.x = direction * adjustedHorizontalSpeed;
+    ballBody.velocity.x = direction * horizontalSpeed;
     ballBody.velocity.y = initialUpwardVelocity;
     ballBody.velocity.z = 0;
     
     // Debug output
-    console.log(`Peg collision! Direction: ${direction > 0 ? 'RIGHT' : 'LEFT'}`);
-    console.log(`Bounce height: ${bounceHeight}, Total fall: ${totalVerticalDistance}`);
-    console.log(`Time to target: ${timeToTarget.toFixed(2)}s`);
-    console.log(`Horizontal speed: ${adjustedHorizontalSpeed.toFixed(2)} (${direction * adjustedHorizontalSpeed >= 0 ? '+' : ''}${(direction * adjustedHorizontalSpeed).toFixed(2)})`);
+    console.log(`=== PEG COLLISION ===`);
+    console.log(`Collision at: (${collisionX.toFixed(2)}, ${collisionY.toFixed(2)})`);
+    // console.log(`Direction: ${direction > 0 ? 'RIGHT' : 'LEFT'}`);
+    // console.log(`Target distance: ${PEG_SPACING_X}`);
+    // console.log(`Target position: (${(collisionX + direction * PEG_SPACING_X).toFixed(2)}, ${(collisionY - PEG_SPACING_Y).toFixed(2)})`);
+    // console.log(`Initial upward velocity: ${initialUpwardVelocity}`);
+    // console.log(`Time to target: ${timeToTarget.toFixed(2)}s`);
+    // console.log(`Horizontal speed: ${horizontalSpeed.toFixed(2)}`);
+    // console.log(`Expected max height: ${(initialUpwardVelocity * initialUpwardVelocity / (2 * gravity)).toFixed(2)}`);
+    
+    // Set up a timeout to check where the ball actually lands
+    setTimeout(() => {
+      const actualX = ballBody.position.x;
+      const actualY = ballBody.position.y;
+      const actualDistance = Math.abs(actualX - collisionX);
+      // console.log(`=== ACTUAL LANDING ===`);
+      // console.log(`Landed at: (${actualX.toFixed(2)}, ${actualY.toFixed(2)})`);
+      // console.log(`Actual distance traveled: ${actualDistance.toFixed(2)}`);
+      // console.log(`Distance error: ${(actualDistance - PEG_SPACING_X).toFixed(2)}`);
+      // console.log(`Center-to-center distance to target peg: ${Math.abs(actualX - (collisionX + direction * PEG_SPACING_X)).toFixed(2)}`);
+    }, timeToTarget * 1000 + 100); // Wait for calculated time plus small buffer
   }
 });
 
