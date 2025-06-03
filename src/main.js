@@ -57,11 +57,18 @@ const createPeg = (x,y) => {
   groundMesh.position.copy(groundBody.position);
   scene.add(groundMesh);
 };
-createPeg(0, 0);
-createPeg(-PEG_SPACING_X, -PEG_SPACING_Y);
-createPeg(PEG_SPACING_X, -PEG_SPACING_Y);
 
-
+const rows = 5;
+for (let i = 0; i < rows; i++) {
+  const cols = i + 1; // Each row has one more peg than the previous
+  
+  for (let j = 0; j < cols; j++) {
+    // Center the pegs in each row
+    const x = (j - (cols - 1) / 2) * 2 * PEG_SPACING_X;
+    const y = -i * PEG_SPACING_Y;
+    createPeg(x, y);
+  }
+}
 
 // Small falling ball
 const ballRadius = 0.2;
