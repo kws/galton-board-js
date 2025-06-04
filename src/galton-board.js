@@ -277,6 +277,14 @@ export class GaltonBoard extends EventTarget {
     return this.buckets.map(bucket => bucket.getCount());
   }
 
+  getPegs() {
+    return this.world.bodies.filter(body => body.userData?.peg).map(body => body.userData.peg);
+  }
+
+  getPegsForRow(row) {
+    return this.world.bodies.filter(body => body.userData?.peg && body.userData.peg.row === row).map(body => body.userData.peg);
+  }
+
   // Configuration setters
   setAutoSpawn(autoSpawn) {
     this.autoSpawn = autoSpawn;

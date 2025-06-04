@@ -10,6 +10,7 @@ export class Peg {
     this.z = z;
     this.radius = radius;
     this.row = row;
+    this.count = 0;
     
     this.createPhysicsBody();
     this.createVisualMesh();
@@ -42,8 +43,8 @@ export class Peg {
     return this.body;
   }
   
-  isRowOnePeg() {
-    return this.isRow1;
+  reset() {
+    this.count = 0;
   }
   
   destroy() {

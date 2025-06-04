@@ -24,7 +24,7 @@ export class Ball {
     this.smallMovementCounter = 0; // Count consecutive small movements
     this.smallMovementThreshold = 0.5; // Displacement threshold for "small movement"
     this.maxSmallMovements = 500; // If we see this many small movements in a row, mark as static
-    
+
     this.createPhysicsBody(x, y, z);
     this.createVisualMesh();
     this.setupSmartWakeUp();
@@ -55,6 +55,7 @@ export class Ball {
       // Check if the collision is with one of the big balls (pegs)
       if (body?.userData?.peg !== undefined) {
         const peg = body.userData.peg;
+        peg.count++;
 
         // Max height to aim for - random between 0.25x and 2x peg spacings
         const yMax = PEG_SPACING_Y + 0.25 + (0.75 * Math.random() * PEG_SPACING_Y);
