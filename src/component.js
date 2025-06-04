@@ -131,14 +131,17 @@ export class GaltonBoardComponent extends LitElement {
     });
 
     // Set up event listeners for simulation events
-    this.galtonBoard.addEventListener('ball-spawned', (event) => {
-      this.dispatchEvent(new CustomEvent('ball-spawned', {
-        detail: event.detail
-      }));
-    });
-
-    this.galtonBoard.addEventListener('reset', (event) => {
-      this.dispatchEvent(new CustomEvent('reset'));
+    // Use a Proxy to automatically forward all dispatched events
+    const originalDispatchEvent = this.galtonBoard.dispatchEvent.bind(this.galtonBoard);
+    this.galtonBoard.dispatchEvent = new Proxy(originalDispatchEvent, {
+      apply: (target, thisArg, args) => {
+        const [event] = args;
+        // Dispatch on the original target first
+        const result = target.apply(thisArg, args);
+        // Then forward through this component
+        this.dispatchEvent(event);
+        return result;
+      }
     });
 
     // Handle window resize

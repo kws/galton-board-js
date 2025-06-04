@@ -214,25 +214,21 @@
         );
         
         // Update statistics for all boards
-        function updateStats() {
-            boards.forEach((board, index) => {
-                const statsElement = document.getElementById(`stats${index + 1}`);
-                if (statsElement && board) {
-                    const ballCount = board.getBallCount();
-                    const bucketCounts = board.getBucketCounts();
-                    
-                    if (index < 2) { // Show full stats for first two boards
-                        statsElement.textContent = 
-                            `Balls: ${ballCount} | Bucket Distribution: [${bucketCounts.join(', ')}]`;
-                    } else { // Simplified stats for compact boards
-                        statsElement.textContent = `Balls: ${ballCount}`;
-                    }
+        function updateStats(board, index) {
+            const statsElement = document.getElementById(`stats${index + 1}`);
+            if (statsElement && board) {
+                const ballCount = board.getBallCount();
+                const bucketCounts = board.getBucketCounts();
+                
+                if (index < 2) { // Show full stats for first two boards
+                    statsElement.textContent = 
+                        `Balls: ${ballCount} | Bucket Distribution: [${bucketCounts.join(', ')}]`;
+                } else { // Simplified stats for compact boards
+                    statsElement.textContent = `Balls: ${ballCount}`;
                 }
-            });
+            }
         }
         
-        // Update stats every second
-        setInterval(updateStats, 1000);
         
         // Global functions for button handlers
         window.toggleAutoSpawn = (boardId) => {
@@ -281,10 +277,17 @@
         boards.forEach((board, index) => {
             board.addEventListener('ball-spawned', (e) => {
                 console.log(`Board ${index + 1} - Ball spawned! Total: ${e.detail.totalBalls}`);
+                updateStats(board, index);
+            });
+
+            board.addEventListener('ball-entered-bucket', (e) => {
+                console.log(`Board ${index + 1} - Ball entered bucket! Total: ${e.detail.bucket.getCount()}`);
+                updateStats(board, index);
             });
             
             board.addEventListener('reset', () => {
                 console.log(`Board ${index + 1} - Reset`);
+                updateStats(board, index);
             });
         });
       });

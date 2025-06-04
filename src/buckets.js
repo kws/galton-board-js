@@ -3,8 +3,10 @@ import * as CANNON from 'cannon-es';
 
 const DEBUG_LID = false;
 
-export class Bucket {
+export class Bucket extends EventTarget {
   constructor(scene, world, x, y, width, height, depth, index) {
+    super();
+
     this.scene = scene;
     this.world = world;
     this.x = x;
@@ -118,7 +120,7 @@ export class Bucket {
     this.bodies.push(lidBody);
     
     // Store reference to this bucket instance on the sensor body
-    lidBody.userData = { bucket: this };
+    lidBody.userData = { bucket: this, reset: this.reset.bind(this) };
     
     // Add collision event listener
     lidBody.addEventListener('collide', (event) => {
@@ -185,7 +187,6 @@ export class Bucket {
       if (ball.inBucket == null) {
         ball.inBucket = this;
         this.count++;
-        console.log(`Bucket ${this.index}: Ball ${ball.id} entered! Count: ${this.count}`);
 
         // Give the ball a small random z offset to introduce variability
         const zOffset = 0.1 * Math.random() - 0.05;
@@ -193,12 +194,21 @@ export class Bucket {
         
         // Update the visual display
         this.updateCountDisplay();
+
+        // Dispatch event when ball enters bucket
+        this.dispatchEvent(new CustomEvent('ball-entered-bucket', {
+          detail: { ball, bucket: this }
+        }));
       }
     }
   }
   
   getCount() {
     return this.count;
+  }
+
+  reset() {
+    this.count = 0;
   }
   
   destroy() {

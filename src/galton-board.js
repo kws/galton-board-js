@@ -49,6 +49,7 @@ export class GaltonBoard extends EventTarget {
     this.clock = null;
     this.animationId = null;
     this.isInitialized = false;
+    this.ballsSpawned = 0;
 
     this.initialize();
   }
@@ -96,12 +97,15 @@ export class GaltonBoard extends EventTarget {
 
     // Create buckets
     this.buckets = createBuckets(this.scene, this.world, this.pegRows, PEG_SPACING_X, PEG_SPACING_Y);
+    this.buckets.forEach(bucket => {
+      bucket.addEventListener('ball-entered-bucket', this.onBallEnteredBucket.bind(this));
+    });
 
     // Setup lighting
     this.setupLighting();
 
     // Start with first ball if autoSpawn is enabled
-    console.log(`AutoSpawn during init: ${this.autoSpawn}`);
+    this.ballsSpawned = 0;
     if (this.autoSpawn) {
       this.spawnBall();
     }
@@ -109,8 +113,6 @@ export class GaltonBoard extends EventTarget {
     this.clock = new THREE.Clock();
     this.isInitialized = true;
     this.startAnimation();
-
-    console.log(`Animation speed: ${this.animationSpeed}`);
   }
 
   setupLighting() {
@@ -131,6 +133,7 @@ export class GaltonBoard extends EventTarget {
     if (!this.scene || !this.world) return null;
     
     const ball = Ball.createRandomBall(this.scene, this.world, this.ballRadius);
+    this.ballsSpawned++;
     
     // Always set up collision handler, but make it conditional on autoSpawn
     ball.setupPegCollisionHandler(() => {
@@ -245,8 +248,18 @@ export class GaltonBoard extends EventTarget {
   }
 
   reset() {
-    this.balls.forEach(ball => ball.destroy());
+    const toDestroy = [];
+    this.world.bodies.forEach(body => {
+      if (body.userData?.ball) {
+        toDestroy.push(body.userData.ball);
+      }
+      if (body.userData?.reset) {
+        body.userData.reset();
+      }
+    });
+    toDestroy.forEach(ball => ball.destroy());
     this.balls = [];
+    this.ballsSpawned = 0;
     
     if (this.autoSpawn) {
       this.spawnBall();
@@ -256,12 +269,11 @@ export class GaltonBoard extends EventTarget {
   }
 
   getBallCount() {
-    return this.balls.length;
+    return this.ballsSpawned;
   }
 
   getBucketCounts() {
     if (!this.buckets) return [];
-    
     return this.buckets.map(bucket => bucket.getCount());
   }
 
@@ -291,5 +303,12 @@ export class GaltonBoard extends EventTarget {
   setAnimationSpeed(animationSpeed) {
     this.animationSpeed = animationSpeed;
     console.log(`Animation speed updated to: ${this.animationSpeed}`);
+  }
+
+  onBallEnteredBucket(event) {
+    this.dispatchEvent(new CustomEvent('ball-entered-bucket', {
+      detail: { ball: event.detail.ball, bucket: event.detail.bucket },
+      originalEvent: event
+    }));
   }
 } 
