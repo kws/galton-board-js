@@ -41,7 +41,7 @@ npm install lit three cannon-es
 ### JavaScript Usage
 
 ```javascript
-import './galton-board.js';
+import './component.js';
 
 // Create component programmatically
 const board = document.createElement('galton-board');
@@ -189,7 +189,7 @@ galton-board {
 
 ### Example 4: Programmatic Control
 ```javascript
-import './galton-board.js';
+import './component.js';
 
 const board = document.createElement('galton-board');
 board.style.width = '100%';
@@ -234,7 +234,8 @@ Open `example.html` in your browser to see various usage examples.
 
 ```
 src/
-├── galton-board.js     # Main LIT component
+├── component.js       # LIT web component wrapper
+├── galton-board.js    # Core simulation logic
 ├── main.js            # Demo application
 ├── balls.js           # Ball physics and rendering
 ├── pegs.js           # Peg creation and setup

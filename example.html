@@ -205,8 +205,9 @@
     </div>
 
     <script type="module">
-        import './src/galton-board.js';
-        
+      import './src/component.js';
+
+      document.addEventListener('DOMContentLoaded', () => {
         // Get all board instances
         const boards = ['board1', 'board2', 'board3', 'board4'].map(id => 
             document.getElementById(id)
@@ -286,6 +287,7 @@
                 console.log(`Board ${index + 1} - Reset`);
             });
         });
+      });
     </script>
 </body>
 </html> 

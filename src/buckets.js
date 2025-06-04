@@ -235,6 +235,5 @@ export function createBuckets(scene, world, pegRows, pegSpacingX, pegSpacingY) {
     buckets.push(bucket);
   }
 
-  console.log(`Created ${numBuckets} buckets`);
   return buckets;
 }

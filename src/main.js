@@ -1,4 +1,4 @@
-import './galton-board.js';
+import './component.js';
 
 // Create and configure the galton board component
 const galtonBoard = document.createElement('galton-board');
